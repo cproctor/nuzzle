@@ -1,0 +1,9 @@
+#!/Users/chris/Documents/3-Software-Engineer/nuzzle/server/bin/python
+# EASY-INSTALL-ENTRY-SCRIPT: 'Mako==1.0.0','console_scripts','mako-render'
+__requires__ = 'Mako==1.0.0'
+import sys
+from pkg_resources import load_entry_point
+
+sys.exit(
+   load_entry_point('Mako==1.0.0', 'console_scripts', 'mako-render')()
+)

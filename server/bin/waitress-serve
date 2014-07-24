@@ -1,0 +1,9 @@
+#!/Users/chris/Documents/3-Software-Engineer/nuzzle/server/bin/python
+# EASY-INSTALL-ENTRY-SCRIPT: 'waitress==0.8.9','console_scripts','waitress-serve'
+__requires__ = 'waitress==0.8.9'
+import sys
+from pkg_resources import load_entry_point
+
+sys.exit(
+   load_entry_point('waitress==0.8.9', 'console_scripts', 'waitress-serve')()
+)

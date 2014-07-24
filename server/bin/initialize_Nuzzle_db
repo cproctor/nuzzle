@@ -1,0 +1,9 @@
+#!/Users/chris/Documents/3-Software-Engineer/nuzzle/server/bin/python
+# EASY-INSTALL-ENTRY-SCRIPT: 'Nuzzle==0.0','console_scripts','initialize_Nuzzle_db'
+__requires__ = 'Nuzzle==0.0'
+import sys
+from pkg_resources import load_entry_point
+
+sys.exit(
+   load_entry_point('Nuzzle==0.0', 'console_scripts', 'initialize_Nuzzle_db')()
+)
