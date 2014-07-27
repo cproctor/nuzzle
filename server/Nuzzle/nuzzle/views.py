@@ -110,8 +110,7 @@ def append_to_queue(request):
 
 @view_config(route_name='add_to_queue', renderer='json')
 def add_to_queue(request):
-    #try:
-    if True:
+    try:
         message = _get_message_by_owner_and_id(request.matchdict['user'], 
                 request.json_body['id'])
         position = max(0, min(int(request.matchdict['position']), _get_queue_length(request)))
@@ -119,8 +118,8 @@ def add_to_queue(request):
         _increment_queue_positions(request, position)
         DBSession.flush()
         return [m.serializable() for m in _get_queued_messages(request)]
-    #except Exception, e: 
-        #return _error(request, repr(e))
+    except Exception, e: 
+        return _error(request, repr(e))
 
 @view_config(route_name='remove_from_queue', renderer='json')
 def remove_from_queue(request):
