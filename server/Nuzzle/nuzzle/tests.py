@@ -66,8 +66,12 @@ class FunctionalTests(unittest.TestCase):
             self.delete_message(owner, message['id'])
 
     def add_to_queue(self, owner, messageId, position):
-        params = (owner, messageId, position)
-        self.testapp.put('/api/v1/messages/%s/%s/queue/position/%s' % params)
+        self.testapp.post_json('/api/v1/messages/%s/queue/%s' % 
+                (owner, position), {'id': messageId})
+
+    def append_to_queue(self, owner, messageId):
+        self.testapp.post_json('/api/v1/messages/%s/queue' % 
+                owner, {'id': messageId})
 
     def test_get_alarms(self):
         for i in range(3):
@@ -91,17 +95,11 @@ class FunctionalTests(unittest.TestCase):
 
     def test_get_next_message_when_no_message_in_queue(self):
         try:
-            res = self.testapp.get('/api/v1/messages/ed/next')
+            res = self.testapp.get('/api/v1/messages/ed/queue/next')
             error = False
         except:
             error = True
         self.failUnless(error)
-
-    def test_get_next_message_when_default(self):
-        m = self.create_message('ed', 'm1')
-        self.testapp.put('/api/v1/messages/ed/%s/default' % m['id'])
-        res = self.testapp.get('/api/v1/messages/ed/next')
-        self.failUnless(m['id'] == res.json['id'])
 
     def test_create_message(self):
         self.create_message('ed', 'm1')
@@ -113,41 +111,56 @@ class FunctionalTests(unittest.TestCase):
         self.delete_message('ed', m1['id'])
         self.failUnless(len(self.get_messages('ed')) == 1)
 
-    def test_set_queue_position(self):
+    def test_get_queue(self):
+        m1 = self.create_message('ed', 'm1')
+        m2 = self.create_message('ed', 'm2')
+        pass
+
+    def test_add_to_queue(self):
         m = [self.create_message('ed', 'm%s' % i) for i in range(3)]
         for msg in m:
             self.add_to_queue('ed', msg['id'], 0)
-        nextMsg = self.testapp.get('/api/v1/messages/ed/next').json
+        nextMsg = self.testapp.get('/api/v1/messages/ed/queue/next').json
         self.failUnless(nextMsg['id'] == 3)
+
+    def test_append_to_queue(self):
+        m = [self.create_message('ed', 'm%s' % i) for i in range(3)]
+        for msg in m:
+            self.append_to_queue('ed', msg['id'])
+        queue = self.testapp.get('/api/v1/messages/ed/queue').json
+        self.failUnless(queue[0]['id'] == 1 and queue[2]['id'] == 3)
 
     def test_remove_from_queue(self):
         m = [self.create_message('ed', 'm%s' % i) for i in range(3)]
         for msg in m:
             self.add_to_queue('ed', msg['id'], 0)
-        self.testapp.put('/api/v1/messages/ed/3/queue/remove')
-        nextMsg = self.testapp.get('/api/v1/messages/ed/next').json
+        nextMsg = self.testapp.get('/api/v1/messages/ed/queue/next').json
+        self.failUnless(nextMsg['id'] == 3)
+        self.testapp.delete('/api/v1/messages/ed/queue/0')
+        nextMsg = self.testapp.get('/api/v1/messages/ed/queue/next').json
         self.failUnless(nextMsg['id'] == 2)
-        self.testapp.put('/api/v1/messages/ed/2/queue/remove')
-        nextMsg = self.testapp.get('/api/v1/messages/ed/next').json
-        self.failUnless(nextMsg['id'] == 1)
 
     def test_mark_as_played(self):
         m1 = self.create_message('ed', 'm1')
-        self.failUnless(not m1['played'])
-        self.testapp.put('/api/v1/messages/ed/1/played')
+        playtime = '2011-04-02 02:45:11'
+        self.failUnless(m1['plays'] == [])
+        self.testapp.put_json('/api/v1/messages/ed/1/played', {'time_played': playtime})
         m1 = self.get_message('ed', m1['id'])
-        self.failUnless(m1['played'])
+        self.failUnless(m1['plays'] == [playtime])
 
     def test_mark_as_unplayed(self):
         m = self.create_message('ed', 'm1')
+        playtime = '2011-04-02 02:45:11'
         messages = self.get_messages('ed')
-        self.failUnless(not messages[0]['played'])
-        self.testapp.put('/api/v1/messages/ed/%s/played' % m['id'])
+        self.failUnless(not any(messages[0]['plays']))
+
+        self.testapp.put_json('/api/v1/messages/ed/%s/played' % m['id'], {'time_played': playtime})
         messages = self.get_messages('ed')
-        self.failUnless(messages[0]['played'])
+        self.failUnless(messages[0]['plays'] == [playtime])
+
         self.testapp.put('/api/v1/messages/ed/%s/unplayed' % m['id'])
         messages = self.get_messages('ed')
-        self.failUnless(not messages[0]['played'])
+        self.failUnless(not any(messages[0]['plays']))
 
     def test_set_as_default(self):
         m = self.create_message('ed', 'm1')

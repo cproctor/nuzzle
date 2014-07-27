@@ -1,3 +1,4 @@
+from datetime import datetime
 from pyramid.response import Response
 from pyramid.request import Request
 from pyramid.view import view_config
@@ -7,6 +8,8 @@ from .models import (
     DBSession,
     Alarm,
     Message, 
+    MessagePlay,
+    MessageQueuePosition,
     )
 
 @view_config(route_name='get_alarms', renderer='json')
@@ -54,22 +57,6 @@ def get_message(request):
     message = DBSession.query(Message).filter(Message.owner == owner).filter(Message.id == mId).one()
     return message.serializable()
 
-@view_config(route_name='get_next_message', renderer='json')
-def get_next_message(request):
-    owner = request.matchdict['user']
-    query = DBSession.query(Message).filter(Message.owner == owner).filter(Message.in_queue == True).order_by(Message.queue_weight)
-    nextMessage = query.first()
-    if nextMessage:
-        return nextMessage.serializable()
-    else:
-        query = DBSession.query(Message).filter(Message.is_default == True)
-        default = query.first()
-        if default:
-            return default.serializable()
-        else:
-            request.response.status = 400
-            return {'status': 'error', 'error': 'no next message'}
-
 @view_config(route_name='create_message', renderer='json')
 def create_message(request):
     try:
@@ -91,38 +78,57 @@ def delete_message(request):
     except Exception, e: 
         return _error(request, repr(e))
 
-@view_config(route_name='set_queue_position', renderer='json')
-def set_queue_position(request):
+@view_config(route_name='get_queue', renderer='json')
+def get_queue(request):
+    try:
+        return [m.serializable() for m in _get_queued_messages(request)]
+    except Exception, e: 
+        return _error(request, repr(e))
+
+@view_config(route_name='get_next_message', renderer='json')
+def get_next_message(request):
+    try: 
+        messages = _get_queued_messages(request)
+        if any(messages):
+            return messages[0].serializable()
+        else:
+            return _error(request, 'No messages in queue')
+    except Exception, e: 
+        return _error(request, repr(e))
+
+@view_config(route_name='append_to_queue', renderer='json')
+def append_to_queue(request):
+    try:
+        message = _get_message_by_owner_and_id(request.matchdict['user'], 
+                request.json_body['id'])
+        position = _get_queue_length(request)
+        message.positions.append(MessageQueuePosition(user=message.owner, position=position))
+        DBSession.flush()
+        return [m.serializable() for m in _get_queued_messages(request)]
+    except Exception, e: 
+        return _error(request, repr(e))
+
+@view_config(route_name='add_to_queue', renderer='json')
+def add_to_queue(request):
     #try:
     if True:
-        message = _get_message(request)
-        position = int(request.matchdict['position'])
-        query = DBSession.query(Message).filter(Message.owner == request.matchdict['user']).filter(Message.in_queue == True).order_by(Message.queue_weight)
-        queue = query.all()
-        queueLength = query.count()
-        if queueLength == 0: 
-            message.queue_weight = 0
-        elif position == 0: # We want the beginning of the queue
-            message.queue_weight = queue[0].queue_weight - 1
-        elif position >= queueLength: # We want the end of the queue
-            message.queue_weight = query[queueLength - 1].queue_weight + 1
-        else: # We want the middle of the queue
-            neighbors = query[position:position + 2]
-            message.queue_weight = (neighbors[0].queue_weight + neighbors[1].queue_weight) / 2
-        message.in_queue = True
+        message = _get_message_by_owner_and_id(request.matchdict['user'], 
+                request.json_body['id'])
+        position = max(0, min(int(request.matchdict['position']), _get_queue_length(request)))
+        message.positions.append(MessageQueuePosition(user=message.owner, position=position))
+        _increment_queue_positions(request, position)
         DBSession.flush()
-        queue = query.all()
-        return message.serializable()
+        return [m.serializable() for m in _get_queued_messages(request)]
     #except Exception, e: 
         #return _error(request, repr(e))
 
 @view_config(route_name='remove_from_queue', renderer='json')
 def remove_from_queue(request):
     try:
-        message = _get_message(request)
-        message.in_queue = False
+        position = int(request.matchdict['position'])
+        DBSession.delete(_get_queue(request)[position])
         DBSession.flush()
-        return message.serializable()
+        return [m.serializable() for m in _get_queued_messages(request)]
     except Exception, e: 
         return _error(request, repr(e))
 
@@ -130,7 +136,9 @@ def remove_from_queue(request):
 def mark_as_played(request):
     try:
         message = _get_message(request)
-        message.played = True
+        playtime = datetime.strptime(request.json_body['time_played'], 
+                '%Y-%m-%d %H:%M:%S')
+        message.plays.append(MessagePlay(time_played=playtime))
         DBSession.flush()
         return message.serializable()
     except Exception, e: 
@@ -140,7 +148,8 @@ def mark_as_played(request):
 def mark_as_unplayed(request):
     try:
         message = _get_message(request)
-        message.played = False
+        for play in message.plays: 
+            DBSession.delete(play)
         DBSession.flush()
         return message.serializable()
     except Exception, e: 
@@ -161,13 +170,33 @@ def set_as_default(request):
         return _error(request, repr(e))
 
 def _get_message(request):
+    return _get_message_by_owner_and_id(request.matchdict['user'], 
+            request.matchdict['messageId'])
+
+def _get_message_by_owner_and_id(owner, mId):
+    return DBSession.query(Message).filter(Message.owner == owner).filter(Message.id == mId).one()
+
+def _get_queue(request):
     owner = request.matchdict['user']
-    id = request.matchdict['messageId']
-    query = DBSession.query(Message).filter(Message.owner == owner).filter(Message.id == id)
-    return query.one()
+    return DBSession.query(MessageQueuePosition).filter(MessageQueuePosition.user == owner).order_by(MessageQueuePosition.position).all()
+
+def _get_queued_messages(request):
+    owner = request.matchdict['user']
+    return [_get_message_by_owner_and_id(owner, q.message_id) 
+            for q in _get_queue(request)]
+
+def _increment_queue_positions(request, insertionPoint):
+    queue = _get_queue(request)
+    for queuedItem in queue[insertionPoint:]:
+        queuedItem.position += 1
+
+def _get_queue_length(request):
+    owner = request.matchdict['user']
+    query = DBSession.query(MessageQueuePosition).filter(MessageQueuePosition.user == owner).order_by(MessageQueuePosition.position)
+    return query.count()
 
 def _error(request, message=""):
-    request.response = 400
+    request.response.status = 400
     return {
         'status': 'error',
         'error': message

@@ -32,14 +32,20 @@ def api_alarm_routes(config):
     config.add_route('cancel_alarm', '/{user}/{alarmId}', request_method='DELETE')
 
 def api_message_routes(config):
+    config.add_route('get_queue', '/{user}/queue', request_method='GET')
+    config.add_route('get_next_message', '/{user}/queue/next', request_method='GET')
+    config.add_route('add_to_queue', '/{user}/queue/{position}', request_method='POST')
+    config.add_route('append_to_queue', '/{user}/queue', request_method='POST')
+    config.add_route('remove_from_queue', '/{user}/queue/{position}', request_method='DELETE')
+
     config.add_route('get_messages', '/{user}', request_method='GET')
-    config.add_route('get_next_message', '/{user}/next', request_method='GET')
     config.add_route('get_message', '/{user}/{messageId}', request_method='GET')
     config.add_route('create_message', '/{user}', request_method='POST')
     config.add_route('delete_message', '/{user}/{messageId}', request_method='DELETE')
-    config.add_route('set_queue_position', '/{user}/{messageId}/queue/position/{position}', request_method='PUT')
-    config.add_route('remove_from_queue', '/{user}/{messageId}/queue/remove', request_method='PUT')
+
     config.add_route('mark_as_played', '/{user}/{messageId}/played', request_method='PUT')
     config.add_route('mark_as_unplayed', '/{user}/{messageId}/unplayed', request_method='PUT')
+
     config.add_route('set_as_default', '/{user}/{messageId}/default', request_method='PUT')
+
 

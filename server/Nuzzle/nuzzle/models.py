@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     Boolean,
     Float,
+    ForeignKey,
     )
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -15,6 +16,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (
     scoped_session,
     sessionmaker,
+    relationship, 
+    backref,
     )
 
 from zope.sqlalchemy import ZopeTransactionExtension
@@ -63,17 +66,11 @@ class Message(Base):
     url = Column(Text)
     name = Column(Text)
     owner = Column(Text)
-    in_queue = Column(Boolean)
-    queue_weight = Column(Float)
-    played = Column(Boolean)
-    time_played = Column(DateTime)
     is_default = Column(Boolean)
 
     def __init__(self, params):
         self.name = params['name']
         self.owner = params['owner']
-        self.in_queue = False
-        self.played = False
         self.is_default = False
 
         if not (
@@ -82,19 +79,31 @@ class Message(Base):
         ):
             raise Exception("Invalid message")
 
-    def set_queue_position(self, position):
-        "Set queue weight so that it is in the nth position when sorted"
-            
     def serializable(self):
         return {
             'id': self.id,
             'url': self.url,
             'name': self.name,
             'owner': self.owner,
-            'in_queue': self.in_queue,
-            'queue_weight': self.queue_weight,
-            'played': self.played,
-            'time_played': self.time_played,
+            'plays': [str(p.time_played) for p in self.plays],
+            'positions': [p.position for p in self.positions],
             'is_default': self.is_default
         }
-            
+
+class MessagePlay(Base):
+    __tablename__ = 'message_plays'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    message_id = Column(Integer, ForeignKey('messages.id'))
+    time_played = Column(DateTime)
+    message = relationship('Message', backref=backref('plays', 
+            order_by='MessagePlay.time_played', cascade="all, delete-orphan"))
+
+class MessageQueuePosition(Base):
+    __tablename__ = 'message_queue_positions'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    message_id = Column(Integer, ForeignKey('messages.id'))
+    position = Column(Integer)
+    user = Column(Text)
+    message = relationship('Message', backref=backref('positions', 
+            order_by='MessageQueuePosition.position', cascade="all, delete-orphan"))
+     
