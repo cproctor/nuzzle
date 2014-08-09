@@ -1,0 +1,65 @@
+.timepicker {
+    width: 30px;
+}
+.timepicker-wide {
+    width: 50px;
+}
+
+.error {
+    color: red;
+}
+
+body {
+    background-color: white;
+    margin: 0;
+    font-family: helvetica;
+}
+
+#container {
+    margin: 0 auto;
+    width: 800px;
+    padding-top: 50px;
+}
+
+#navbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    height: 50px;
+    background-color: #2C3E50;
+    border-bottom: 2px solid #F39C12;
+    color: white;
+}
+
+#navbar ul {
+
+}
+
+#navbar li {
+    display: inline;
+    list-style: none;
+    margin: 20px;
+}
+
+#navbar a {
+    cursor: pointer;
+}
+
+#navbar a:hover {
+    color: #F1C40F;
+}
+
+#navbar a.selected {
+    color: #27AE60;
+}
+#navbar a.selected:hover {
+    color: #2ECC71;
+}
+
+.clear {
+    clear:both;
+}
+
+ul.stacked li {
+    list-style: none;
+}

@@ -1,11 +1,9 @@
-app = angular.module('nuzzleClient')
+SERVER = 'http://localhost:6543'
+USER = 'chris'
+PARTNER = 'zuz'
+
+var app = angular.module('nuzzleClient', [])
 
 app.controller('nuzzleController', function($scope) {
-    
-})
-
-app.service('nuzzleApi', ['$http', function($http) {
-    this.getMessages = 
-    this.getMessage = 
-
+    $scope.nav = 'alarms'
 })

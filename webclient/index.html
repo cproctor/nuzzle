@@ -1,16 +1,118 @@
 <!DOCTYPE HTML>
 <html>
     <head>
-        <link rel="stylesheet" href="style.css">"
+        <link rel="stylesheet" href="style.css">
+        <script src="lib/angular.min.js"></script>
+        <script src="lib/d3.v3.min.js"></script>
+        <script src="lib/moment.min.js"></script>
+        <script src="lib/underscore.min.js"></script>
+        <script src="js/app.js"></script>
+        <script src="js/file_reader.js"></script>
+        <script src="js/file_input.js"></script>
+        <script src="js/nuzzle_api.js"></script>
+        <script src="js/alarms_ctrl.js"></script>
+        <script src="js/history_ctrl.js"></script>
+        <script src="js/messages_ctrl.js"></script>
+        <script src="js/alarm_timer.js"></script>
     </head>
     <body ng-app='nuzzleClient' ng-controller='nuzzleController'>
-        <div>
-            <div ng-repeat="queuedMessage in queuedMessages">
-                <h3>{{queuedMessage.title}}</h3>
-                <p>Delete</p>
+        <div id="navbar">
+            <ul>
+                <li><a ng-click="nav='alarms'" ng-class="{selected: nav == 'alarms'}">Alarms</a></li>
+                <li><a ng-click="nav='messages'" ng-class="{selected: nav == 'messages'}">Messages</a></li>
+                <li><a ng-click="nav='history'" ng-class="{selected: nav == 'history'}">History</a></li>
+            </ul>
+            <div class="clear"></div>
+        </div>
+        <div id="container">
+        <div ng-controller="alarmsCtrl" ng-show="nav == 'alarms'">
+            <h2>Alarms</h2>
+            <ul class="stacked">
+                <li ng-repeat="alarm in alarms">
+                    <div cp-alarm='alarm' cp-disabled='true' cp-scale="2"></div>
+                    Alarm: {{alarm.time}} (<a ng-click="cancelAlarm(alarm.id)">Cancel</a>)
+                </li>
+            </ul>
+            <div>
+                <h3>Add an alarm</h3>
+
+                    <div cp-alarm='newAlarm' cp-on-change='updateAlarm'></div>
+                <!--
+                <input type="number" class="timepicker-wide" ng-change="updateDate('year')" ng-model="newAlarm.year">-
+                <input type="number" class="timepicker" ng-change="updateDate('month')" ng-model="newAlarm.month">-
+                <input type="number" class="timepicker" ng-change="updateDate('date')" ng-model="newAlarm.date"> 
+                <input type="number" class="timepicker" ng-change="updateDate('hours')" ng-model="newAlarm.hours">:
+                <input type="number" class="timepicker" ng-change="updateDate('minutes')" ng-model="newAlarm.minutes">:00
+                <p>The alarm is set for {{newAlarm.text}}</p>
+                -->
+                <button ng-click="createAlarm()">Create this alarm</button>
+
             </div>
         </div>
-        <script src="lib/angular.min.js"></script>
-        <script src="js/app.js"></script>
+
+        <div ng-controller="messagesCtrl" ng-show="nav == 'messages'">
+            <h2>Messages</h2>
+            <div>
+                <div ng-repeat="message in messages">
+                    <p>{{message.name}}</p>
+                    <audio controls>
+                        <source src="{{message.url}}">
+                    </audio>
+                    <a ng-click="deleteMessage(message.id)">Delete</a>
+                    <a ng-click="queueMessage(message.id)">Add to queue</a>
+                    
+                </div>
+            </div>
+            <div>
+                <h3>Add a message</h3>
+                <p class="error">
+                    {{newMessage.error}}
+                </p>
+                Name: <input ng-model="newMessage.name">
+                <div cp-file-input="newMessage.file" on-change="readFile()"></div>
+                <button ng-click="createMessage()" ng-disabled="!newMessage.valid">
+                    Upload message
+                </button>
+            </div>
+            <div>
+                <h3>Message Queue</h3>
+                <div ng-repeat="message in queue">
+                    <p>{{$index}}. {{message.name}}</p>
+                    <ul>
+                        <li ng-show="$index > 0">
+                            <a ng-click="changeQueuePosition(message.id, $index, -1)">Move up</a>
+                        </li>
+                        <li ng-show="$index < queue.length - 1">
+                            <a ng-click="changeQueuePosition(message.id, $index, 1)">Move down</a>
+                        </li>
+                        <li>
+                            <a ng-click="unqueueMessage($index)">Remove</a>
+                        </li>
+                    </ul>
+                    <audio controls>
+                        <source src="{{message.url}}">
+                    </audio>
+                </div>
+            </div>
+        </div>
+
+        <div ng-controller="historyCtrl" ng-show="nav == 'history'">
+            <h2>History</h2>
+            <div ng-repeat="play in plays">
+                <p>{{play.message.name}} played at {{play.time_played}}</p>
+                <audio controls>
+                    <source src="{{play.message.url}}">
+                </audio>
+            </div>
+        </div>
+        </div>
+        <div id="slider-wrapper">
+            <svg>
+                <rect x=""
+            </svg>
+            <div "messages-pane">
+
+            </div>
+        </div>
     </body>
 </html>
